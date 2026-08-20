@@ -1,0 +1,12 @@
+# deps / build output
+node_modules/
+out/
+dist/
+*.vsix
+.vscode-test/
+
+# Claude context — อยู่ใน private context repo แยกต่างหาก (ดู .claude/docs/CONTEXT-REPO.md)
+# ห้ามเอาขึ้น repo นี้เด็ดขาด เพราะ repo นี้เป็น public
+CLAUDE.md
+.claude/
+KAPOM-PROMPTPACK-SPEC_3.md
