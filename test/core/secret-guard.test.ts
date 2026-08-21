@@ -406,3 +406,29 @@ suite('secret-guard / overlapping rules', () => {
     assert.equal(guarded.redactions.length, 2);
   });
 });
+
+suite('secret-guard / content scanning switched off', () => {
+  const NO_SCAN: GuardOptions = { mode: 'redact', contentScanning: false };
+
+  test('the deny list still runs — a setting cannot release a .env', () => {
+    const outcome = guardOne(file('.env', 'API_KEY=super-secret-value\n'), NO_SCAN);
+
+    assert.equal(outcome.guarded.length, 0);
+    assert.equal(outcome.skipped[0]?.reason, 'deny-list');
+  });
+
+  test('key material is still skipped by name', () => {
+    const outcome = guardOne(file('server.pem', 'anything\n'), NO_SCAN);
+
+    assert.equal(outcome.guarded.length, 0);
+  });
+
+  test('file contents are passed through untouched', () => {
+    const content = 'const password = "hunter2";\n';
+    const guarded = guardOne(file('config.ts', content), NO_SCAN).guarded[0];
+
+    assert.ok(guarded);
+    assert.equal(guarded.content, content);
+    assert.equal(guarded.redactions.length, 0);
+  });
+});

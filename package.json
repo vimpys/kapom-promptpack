@@ -37,7 +37,128 @@
         "title": "Hello",
         "category": "Kapom PromptPack"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Kapom PromptPack",
+      "properties": {
+        "kapomPromptPack.includeExtensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "ts",
+            "tsx",
+            "vue",
+            "js",
+            "jsx",
+            "json",
+            "css",
+            "scss",
+            "sql",
+            "cs",
+            "md"
+          ],
+          "markdownDescription": "File extensions to include, without the dot. An empty list allows every extension."
+        },
+        "kapomPromptPack.ignorePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules",
+            "dist",
+            "build",
+            "out",
+            "coverage",
+            ".git"
+          ],
+          "markdownDescription": "Names or globs to skip. Matched against each path segment, so `dist` also skips `packages/app/dist`."
+        },
+        "kapomPromptPack.respectGitignore": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Skip files the workspace's `.gitignore` already excludes."
+        },
+        "kapomPromptPack.maxFileSizeKb": {
+          "type": "number",
+          "default": 200,
+          "minimum": 0,
+          "markdownDescription": "Skip files larger than this. `0` disables the limit."
+        },
+        "kapomPromptPack.tokenWarningThreshold": {
+          "type": "number",
+          "default": 100000,
+          "minimum": 0,
+          "markdownDescription": "Warn when the estimated payload passes this many tokens. `0` disables the warning."
+        },
+        "kapomPromptPack.includeProjectOverview": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Add the workspace name, file count and token estimate at the top of the prompt."
+        },
+        "kapomPromptPack.secretGuard.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Scan file contents for credentials. **Files whose names look like secrets — `.env`, `*.pem`, `*.key`, `credentials*` — are skipped either way; that cannot be turned off.**"
+        },
+        "kapomPromptPack.secretGuard.mode": {
+          "type": "string",
+          "enum": [
+            "redact",
+            "skipFile"
+          ],
+          "default": "redact",
+          "markdownEnumDescriptions": [
+            "Mask the offending values and keep the rest of the file.",
+            "Leave out any file that contains a credential."
+          ],
+          "markdownDescription": "What to do when a credential is found inside a file."
+        },
+        "kapomPromptPack.secretGuard.extraPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Extra regular expressions to redact. A capture group marks the part to mask; without one the whole match is masked."
+        },
+        "kapomPromptPack.previewBeforeCopy": {
+          "type": "string",
+          "enum": [
+            "always",
+            "onWarning",
+            "never"
+          ],
+          "default": "onWarning",
+          "markdownEnumDescriptions": [
+            "Always open the prompt for review first.",
+            "Open it when the payload is large, or when something was redacted or skipped.",
+            "Copy straight to the clipboard."
+          ],
+          "markdownDescription": "Show the assembled prompt before it reaches the clipboard. Once pasted, it cannot be recalled."
+        },
+        "kapomPromptPack.scrubAbsolutePaths": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Replace absolute paths inside file contents, so the account name in `C:\\Users\\<name>` does not travel with the prompt."
+        },
+        "kapomPromptPack.outputLanguage": {
+          "type": "string",
+          "enum": [
+            "th",
+            "en"
+          ],
+          "default": "th",
+          "markdownEnumDescriptions": [
+            "Thai headings in the generated prompt.",
+            "English headings in the generated prompt."
+          ],
+          "markdownDescription": "Language of the headings in the generated prompt."
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "node esbuild.js",

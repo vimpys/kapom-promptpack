@@ -10,6 +10,11 @@ import {
 export interface GuardOptions {
   readonly mode: SecretGuardMode;
   readonly extraPatterns?: readonly string[];
+  /**
+   * Turning this off skips the per-line scan only. The deny list still runs:
+   * no setting may hand a .env or a private key to a chat window.
+   */
+  readonly contentScanning?: boolean;
 }
 
 export interface GuardOutcome {
@@ -378,7 +383,10 @@ export function guardFiles(files: readonly SourceFile[], options: GuardOptions):
       continue;
     }
 
-    const { content, redactions } = redactContent(file.content, extraRules);
+    const { content, redactions } =
+      options.contentScanning === false
+        ? { content: file.content, redactions: [] as readonly Redaction[] }
+        : redactContent(file.content, extraRules);
 
     if (options.mode === 'skipFile' && redactions.length > 0) {
       skipped.push({
