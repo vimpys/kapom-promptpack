@@ -1,3 +1,5 @@
+import { baseName, extensionOf } from './path-utils.js';
+
 /**
  * Maps a file to the fence tag a chat UI will recognise.
  *
@@ -76,30 +78,17 @@ const BY_NAME: Readonly<Record<string, string>> = {
   '.editorconfig': 'ini',
 };
 
-function baseName(relativePath: string): string {
-  const parts = relativePath.split(/[/\\]/u);
-
-  return parts[parts.length - 1] ?? relativePath;
-}
-
 /**
  * Returns the fence tag for a path, or an empty string when the language is
  * unknown. An empty tag is deliberate: a wrong tag makes a chat UI highlight
  * the file as the wrong language, which reads worse than no highlighting.
  */
 export function languageTagFor(relativePath: string): string {
-  const name = baseName(relativePath).toLowerCase();
-  const byName = BY_NAME[name];
+  const byName = BY_NAME[baseName(relativePath).toLowerCase()];
 
   if (byName !== undefined) {
     return byName;
   }
 
-  const dot = name.lastIndexOf('.');
-
-  if (dot < 0) {
-    return '';
-  }
-
-  return BY_EXTENSION[name.slice(dot + 1)] ?? '';
+  return BY_EXTENSION[extensionOf(relativePath)] ?? '';
 }

@@ -1,3 +1,4 @@
+import { baseName } from './path-utils.js';
 import {
   markGuarded,
   type GuardedFile,
@@ -240,12 +241,6 @@ const PLACEHOLDER_PREFIX = '<REDACTED:';
 
 function placeholder(rule: string): string {
   return `${PLACEHOLDER_PREFIX}${rule}>`;
-}
-
-function baseName(relativePath: string): string {
-  const parts = relativePath.split(/[/\\]/u);
-
-  return parts[parts.length - 1] ?? relativePath;
 }
 
 function compileExtraPatterns(patterns: readonly string[]): readonly ContentRule[] {

@@ -5,7 +5,7 @@ import {
   type ResolvedSettings,
 } from '../core/settings-schema.js';
 
-export const CONFIGURATION_SECTION = 'kapomPromptPack';
+const CONFIGURATION_SECTION = 'kapomPromptPack';
 
 const KEYS: readonly string[] = [
   'includeExtensions',

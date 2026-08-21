@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {
   collectFiles,
+  describeSize,
+  exceedsSizeLimit,
   looksBinary,
   pathSkipReason,
   type FilterRules,
@@ -189,5 +191,21 @@ suite('collector / collectFiles', () => {
 
     assert.deepEqual(outcome.kept, []);
     assert.deepEqual(outcome.skipped, []);
+  });
+});
+
+suite('collector / size helpers', () => {
+  test('exceedsSizeLimit compares against the kilobyte setting', () => {
+    assert.equal(exceedsSizeLimit(201 * 1024, 200), true);
+    assert.equal(exceedsSizeLimit(200 * 1024, 200), false);
+  });
+
+  test('a limit of zero never triggers', () => {
+    assert.equal(exceedsSizeLimit(999 * 1024 * 1024, 0), false);
+  });
+
+  test('describeSize rounds to whole kilobytes', () => {
+    assert.equal(describeSize(300 * 1024), '300 KB');
+    assert.equal(describeSize(1536), '2 KB');
   });
 });

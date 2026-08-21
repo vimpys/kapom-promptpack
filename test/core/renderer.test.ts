@@ -214,3 +214,44 @@ suite('renderer / end to end', () => {
     assert.equal(result.summary.fileCount, 0);
   });
 });
+
+suite('renderer / project overview toggle', () => {
+  test('the overview is included by default', () => {
+    const markdown = render(guard(source('a.ts', 'x')));
+
+    assert.match(markdown, /# Project overview/u);
+  });
+
+  test('includeOverview false drops the block but keeps the files', () => {
+    const result = renderPrompt({
+      workspaceName: 'app',
+      files: guard(source('src/a.ts', 'export const a = 1;\n')),
+      includeOverview: false,
+    });
+
+    assert.ok(!result.markdown.includes('Project overview'));
+    assert.ok(!result.markdown.includes('Estimated tokens'));
+    assert.match(result.markdown, /# Files included/u);
+    assert.match(result.markdown, /export const a = 1;/u);
+  });
+
+  test('the summary still reports tokens even when the block is hidden', () => {
+    const result = renderPrompt({
+      workspaceName: 'app',
+      files: guard(source('src/a.ts', 'x'.repeat(400))),
+      includeOverview: false,
+    });
+
+    assert.ok(result.summary.totalTokens > 0);
+  });
+
+  test('no placeholder is left behind in the payload', () => {
+    const result = renderPrompt({
+      workspaceName: 'app',
+      files: guard(source('a.ts', 'x')),
+      includeOverview: false,
+    });
+
+    assert.ok(!result.markdown.includes('@@TOKENS@@'));
+  });
+});

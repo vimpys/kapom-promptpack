@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import { readSettings, reportSettingsProblems } from '../config/settings.js';
-import { collectFiles, pathSkipReason } from '../core/collector.js';
+import {
+  collectFiles,
+  describeSize,
+  exceedsSizeLimit,
+  pathSkipReason,
+} from '../core/collector.js';
 import { parseGitignore, type GitignoreRule } from '../core/gitignore.js';
 import { scrubPaths } from '../core/path-scrubber.js';
 import { decidePreview } from '../core/preview-policy.js';
@@ -52,11 +57,11 @@ async function buildPayload(
   for (const entry of entries) {
     const bytes = await sizeOf(entry.uri);
 
-    if (settings.maxFileSizeKb > 0 && bytes > settings.maxFileSizeKb * 1024) {
+    if (exceedsSizeLimit(bytes, settings.maxFileSizeKb)) {
       skipped.push({
         relativePath: entry.relativePath,
         reason: 'too-large',
-        detail: `${String(Math.round(bytes / 1024))} KB`,
+        detail: describeSize(bytes),
       });
 
       continue;
@@ -70,13 +75,15 @@ async function buildPayload(
     ...(context.gitignore.length > 0 ? { gitignore: context.gitignore } : {}),
   });
 
+  const home = homeDirectory();
+  const scrubOptions = {
+    workspaceRoot: folder.uri.fsPath,
+    ...(home === undefined ? {} : { homeDirectory: home }),
+  };
   const scrubbed = settings.scrubAbsolutePaths
     ? collected.kept.map((file) => ({
         ...file,
-        content: scrubPaths(file.content, {
-          workspaceRoot: folder.uri.fsPath,
-          ...(homeDirectory() === undefined ? {} : { homeDirectory: homeDirectory() ?? '' }),
-        }),
+        content: scrubPaths(file.content, scrubOptions),
       }))
     : collected.kept;
 
@@ -87,6 +94,7 @@ async function buildPayload(
     files: guarded.guarded,
     skipped: [...skipped, ...collected.skipped, ...guarded.skipped],
     language: settings.outputLanguage,
+    includeOverview: settings.includeProjectOverview,
   });
 }
 
