@@ -11,3 +11,4 @@
 - Settings: 12 configuration options with validation
 - Providers: transport interface with a clipboard implementation
 - Command: "Pack Selected Files" in the palette and the explorer context menu
+- Review the prompt before it reaches the clipboard, plus a status bar token readout

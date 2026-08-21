@@ -47,7 +47,7 @@ async function write(relative: string, content: string): Promise<vscode.Uri> {
 async function pack(...selection: readonly vscode.Uri[]): Promise<CaptureProvider> {
   const provider = new CaptureProvider();
 
-  await packFiles(selection[0], selection, provider);
+  await packFiles(selection[0], selection, { provider, confirm: () => Promise.resolve(true) });
 
   return provider;
 }
@@ -154,7 +154,7 @@ suite('pack-files', () => {
   test('an empty selection delivers nothing rather than an empty prompt', async () => {
     const provider = new CaptureProvider();
 
-    await packFiles(undefined, [], provider);
+    await packFiles(undefined, [], { provider });
 
     assert.equal(provider.markdown, '');
   });
@@ -163,5 +163,88 @@ suite('pack-files', () => {
     const provider = await pack(sandbox('secrets.json'));
 
     assert.equal(provider.markdown, '');
+  });
+});
+
+suite('pack-files / preview gate', () => {
+  // Its own fixtures: the suite above removes the sandbox in its teardown.
+  suiteSetup(async () => {
+    await vscode.workspace.fs.createDirectory(sandbox());
+
+    await write('src/a.ts', 'export const a = 1;\n');
+    await write('src/config.ts', 'const password = "hunter2";\n');
+  
+  });
+
+  suiteTeardown(async () => {
+    await vscode.workspace.fs.delete(sandbox(), { recursive: true, useTrash: false });
+  });
+
+  test('a payload with redactions asks before copying', async () => {
+    const provider = new CaptureProvider();
+    let asked: readonly string[] | undefined;
+
+    await packFiles(sandbox('src', 'config.ts'), [sandbox('src', 'config.ts')], {
+      provider,
+      confirm: (_markdown, reasons) => {
+        asked = reasons;
+
+        return Promise.resolve(true);
+      },
+    });
+
+    assert.ok(asked, 'the user should have been asked');
+    assert.ok(asked.some((reason) => reason.includes('masked')));
+    assert.ok(provider.markdown.length > 0);
+  });
+
+  test('refusing the preview copies nothing at all', async () => {
+    const provider = new CaptureProvider();
+
+    await packFiles(sandbox('src', 'config.ts'), [sandbox('src', 'config.ts')], {
+      provider,
+      confirm: () => Promise.resolve(false),
+    });
+
+    assert.equal(provider.markdown, '');
+    assert.equal(provider.summary, undefined);
+  });
+
+  test('a clean payload is copied without interrupting', async () => {
+    const provider = new CaptureProvider();
+    let asked = false;
+
+    await packFiles(sandbox('src', 'a.ts'), [sandbox('src', 'a.ts')], {
+      provider,
+      confirm: () => {
+        asked = true;
+
+        return Promise.resolve(true);
+      },
+    });
+
+    assert.equal(asked, false, 'nothing was masked or skipped, so no gate');
+    assert.ok(provider.markdown.includes('export const a = 1;'));
+  });
+
+  test('the status bar is updated only after a successful copy', async () => {
+    const updates: number[] = [];
+    const statusBar = { update: (summary: { totalTokens: number }) => updates.push(summary.totalTokens) };
+
+    await packFiles(sandbox('src', 'config.ts'), [sandbox('src', 'config.ts')], {
+      provider: new CaptureProvider(),
+      statusBar,
+      confirm: () => Promise.resolve(false),
+    });
+
+    assert.deepEqual(updates, [], 'cancelled packs must not update the status bar');
+
+    await packFiles(sandbox('src', 'a.ts'), [sandbox('src', 'a.ts')], {
+      provider: new CaptureProvider(),
+      statusBar,
+      confirm: () => Promise.resolve(true),
+    });
+
+    assert.equal(updates.length, 1);
   });
 });

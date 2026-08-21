@@ -3,6 +3,7 @@ import { readSettings, reportSettingsProblems } from '../config/settings.js';
 import { collectFiles, pathSkipReason } from '../core/collector.js';
 import { parseGitignore, type GitignoreRule } from '../core/gitignore.js';
 import { scrubPaths } from '../core/path-scrubber.js';
+import { decidePreview } from '../core/preview-policy.js';
 import { renderPrompt } from '../core/renderer.js';
 import { guardFiles } from '../core/secret-guard.js';
 import {
@@ -11,8 +12,9 @@ import {
   type PromptPackSettings,
 } from '../core/settings-schema.js';
 import { formatTokenCount } from '../core/token-estimator.js';
-import type { PackResult, SkippedFile, SourceFile } from '../core/types.js';
+import type { PackResult, PackSummary, SkippedFile, SourceFile } from '../core/types.js';
 import { ClipboardProvider } from '../providers/clipboard-provider.js';
+import { confirmPayload } from '../views/preview.js';
 import { describeError, type PromptProvider } from '../providers/provider.js';
 import {
   expandSelection,
@@ -123,11 +125,20 @@ function summarise(result: PackResult): string {
   return parts.join(' · ');
 }
 
+export interface PackDependencies {
+  readonly provider?: PromptProvider;
+  readonly statusBar?: { update(summary: PackSummary): void };
+  /** Injectable so tests can approve or refuse without a real dialog. */
+  readonly confirm?: (markdown: string, reasons: readonly string[]) => Promise<boolean>;
+}
+
 export async function packFiles(
   uri?: vscode.Uri,
   uris?: readonly vscode.Uri[],
-  provider: PromptProvider = new ClipboardProvider(),
+  dependencies: PackDependencies = {},
 ): Promise<void> {
+  const provider = dependencies.provider ?? new ClipboardProvider();
+  const confirm = dependencies.confirm ?? confirmPayload;
   const selection = resolveSelection(uri, uris);
 
   if (selection.length === 0) {
@@ -185,6 +196,21 @@ export async function packFiles(
       return;
     }
 
+    const decision = decidePreview(settings.previewBeforeCopy, {
+      totalTokens: result.summary.totalTokens,
+      tokenWarningThreshold: settings.tokenWarningThreshold,
+      redactionCount: result.summary.redactionCount,
+      skippedCount: result.summary.skipped.length,
+    });
+
+    if (decision.required && !(await confirm(result.markdown, decision.reasons))) {
+      void vscode.window.showInformationMessage(
+        'Kapom PromptPack — cancelled. Nothing was copied.',
+      );
+
+      return;
+    }
+
     const outcome = await provider.deliver({
       markdown: result.markdown,
       summary: result.summary,
@@ -200,15 +226,12 @@ export async function packFiles(
       return;
     }
 
+    dependencies.statusBar?.update(result.summary);
+
     const message = `Kapom PromptPack — copied ${summarise(result)}`;
 
-    if (
-      settings.tokenWarningThreshold > 0 &&
-      result.summary.totalTokens > settings.tokenWarningThreshold
-    ) {
-      void vscode.window.showWarningMessage(
-        `${message}. That is over your ${formatTokenCount(settings.tokenWarningThreshold)} token warning threshold.`,
-      );
+    if (decision.reasons.length > 0) {
+      void vscode.window.showWarningMessage(`${message} · ${decision.reasons.join('; ')}`);
 
       return;
     }
