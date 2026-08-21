@@ -17,3 +17,6 @@ out/**
 .vscode-test/**
 .vscode-test.mjs
 test/**
+
+# design source, not needed at runtime
+media/chameleon-artwork.png
