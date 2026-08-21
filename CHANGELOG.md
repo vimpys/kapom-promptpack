@@ -9,3 +9,4 @@
 - Core: path scrubbing and the markdown renderer
 - Core: file filtering and a gitignore matcher
 - Settings: 12 configuration options with validation
+- Providers: transport interface with a clipboard implementation
