@@ -33,11 +33,32 @@
   "contributes": {
     "commands": [
       {
+        "command": "kapomPromptPack.packFiles",
+        "title": "Pack Selected Files",
+        "category": "Kapom PromptPack"
+      },
+      {
         "command": "kapomPromptPack.hello",
         "title": "Hello",
         "category": "Kapom PromptPack"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "kapomPromptPack.packFiles",
+          "when": "workspaceFolderCount != 0",
+          "group": "6_copypath@10"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "kapomPromptPack.packFiles",
+          "when": "workspaceFolderCount != 0",
+          "group": "9_cutcopypaste@10"
+        }
+      ]
+    },
     "configuration": {
       "title": "Kapom PromptPack",
       "properties": {

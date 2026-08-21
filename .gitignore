@@ -10,3 +10,7 @@ dist/
 CLAUDE.md
 .claude/
 KAPOM-PROMPTPACK-SPEC_3.md
+
+# written by the extension tests at runtime
+test/fixtures/workspace/sandbox/
+test/fixtures/workspace/.gitignore
