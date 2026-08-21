@@ -378,3 +378,31 @@ suite('secret-guard / compound keys that are not secrets', () => {
     });
   }
 });
+
+suite('secret-guard / overlapping rules', () => {
+  test('one secret on one line is reported once, not once per matching rule', () => {
+    const guarded = guardOne(file('config.ts', 'const password = "hunter2";\n')).guarded[0];
+
+    assert.ok(guarded);
+    assert.equal(guarded.redactions.length, 1);
+  });
+
+  test('a placeholder is never masked again', () => {
+    const guarded = guardOne(file('config.ts', 'const password = "hunter2";\n')).guarded[0];
+
+    assert.ok(guarded);
+    assert.equal(guarded.content, 'const password = "<REDACTED:assigned-secret>";\n');
+    assert.ok(!guarded.content.includes('<REDACTED:<REDACTED:'));
+  });
+
+  test('two different secrets on one line are both reported', () => {
+    const guarded = guardOne(
+      file('a.ts', 'const c = { password: "hunter2", awsKey: "AKIAIOSFODNN7EXAMPLE" };\n'),
+    ).guarded[0];
+
+    assert.ok(guarded);
+    assert.ok(!guarded.content.includes('hunter2'));
+    assert.ok(!guarded.content.includes('AKIAIOSFODNN7EXAMPLE'));
+    assert.equal(guarded.redactions.length, 2);
+  });
+});

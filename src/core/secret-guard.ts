@@ -231,8 +231,10 @@ const CONTENT_RULES: readonly ContentRule[] = [
 const PRIVATE_KEY_BEGIN = /-----BEGIN [A-Z ]*PRIVATE KEY-----/u;
 const PRIVATE_KEY_END = /-----END [A-Z ]*PRIVATE KEY-----/u;
 
+const PLACEHOLDER_PREFIX = '<REDACTED:';
+
 function placeholder(rule: string): string {
-  return `<REDACTED:${rule}>`;
+  return `${PLACEHOLDER_PREFIX}${rule}>`;
 }
 
 function baseName(relativePath: string): string {
@@ -266,6 +268,13 @@ function applyRule(line: string, rule: ContentRule): AppliedRule {
   const text = line.replace(rule.pattern, (match: string, ...rest: unknown[]): string => {
     const captured = rest[0];
     const value = typeof captured === 'string' ? captured : match;
+
+    // Rules overlap by design, so a later rule will happily match the
+    // placeholder an earlier one just wrote. Masking a mask changes nothing on
+    // screen but inflates the count the user is shown.
+    if (value.startsWith(PLACEHOLDER_PREFIX)) {
+      return match;
+    }
 
     if (rule.isSecret !== undefined && !rule.isSecret(value)) {
       return match;
@@ -325,13 +334,16 @@ function redactContent(content: string, extraRules: readonly ContentRule[]): Red
     }
 
     let text = line;
+    const firedOnThisLine = new Set<string>();
 
     for (const rule of rules) {
       const applied = applyRule(text, rule);
 
       text = applied.text;
 
-      if (applied.hit) {
+      // Several rules can describe the same secret. Report it once per line.
+      if (applied.hit && !firedOnThisLine.has(rule.rule)) {
+        firedOnThisLine.add(rule.rule);
         redactions.push({ line: lineNumber, rule: rule.rule });
       }
     }

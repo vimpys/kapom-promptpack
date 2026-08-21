@@ -2,6 +2,9 @@ export type SecretGuardMode = 'redact' | 'skipFile';
 
 export type PreviewPolicy = 'always' | 'onWarning' | 'never';
 
+/** Language of the headings in the rendered payload, not of the repo itself. */
+export type OutputLanguage = 'th' | 'en';
+
 export interface SourceFile {
   readonly relativePath: string;
   readonly content: string;
