@@ -6,6 +6,11 @@
   "publisher": "kapom-soft",
   "author": "Kapom (https://github.com/vimpys)",
   "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#3a41a0",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vimpys/kapom-promptpack.git"
