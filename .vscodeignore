@@ -13,3 +13,7 @@ CLAUDE.md
 KAPOM-PROMPTPACK-SPEC_3.md
 **/*.map
 **/*.ts
+out/**
+.vscode-test/**
+.vscode-test.mjs
+test/**

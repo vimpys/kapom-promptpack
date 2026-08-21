@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "Node16",
     "moduleResolution": "Node16",
-    "rootDir": "src",
-    "outDir": "dist",
+    "outDir": "out",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
@@ -17,5 +18,8 @@
     "skipLibCheck": true,
     "sourceMap": true
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "test"
+  ]
 }
