@@ -1,0 +1,15 @@
+.vscode/**
+.claude/**
+src/**
+test/**
+node_modules/**
+*.vsix
+.gitignore
+.vscodeignore
+esbuild.js
+eslint.config.mjs
+tsconfig.json
+CLAUDE.md
+KAPOM-PROMPTPACK-SPEC_3.md
+**/*.map
+**/*.ts
