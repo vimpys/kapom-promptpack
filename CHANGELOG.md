@@ -7,3 +7,4 @@
 - Test harness (@vscode/test-cli + @vscode/test-electron)
 - Core: token estimator, shared data shapes, secret guard with line-level redaction
 - Core: path scrubbing and the markdown renderer
+- Core: file filtering and a gitignore matcher
