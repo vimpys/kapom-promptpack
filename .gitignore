@@ -9,7 +9,6 @@ dist/
 # ห้ามเอาขึ้น repo นี้เด็ดขาด เพราะ repo นี้เป็น public
 CLAUDE.md
 .claude/
-KAPOM-PROMPTPACK-SPEC_3.md
 
 # written by the extension tests at runtime
 test/fixtures/workspace/sandbox/
