@@ -1,12 +1,13 @@
 /**
- * ประมาณจำนวน token แบบหยาบด้วยสูตร chars / 4
+ * Rough token estimation using a chars / 4 heuristic.
  *
- * แยกเป็นโมดูลของตัวเองเพื่อให้เปลี่ยนไปใช้ tokenizer จริง (tiktoken / gpt-tokenizer)
- * ได้โดยไม่ต้องแก้ที่อื่น — จุดเรียกใช้ทุกที่ต้องผ่านฟังก์ชันในไฟล์นี้เท่านั้น
+ * This lives in its own module so it can be swapped for a real tokenizer
+ * (tiktoken, gpt-tokenizer) without touching any call site.
  *
- * ข้อจำกัดที่รู้อยู่: สูตรนี้ปรับมาสำหรับภาษาอังกฤษ ข้อความภาษาไทยกินจำนวน token
- * ต่ออักขระสูงกว่ามาก (บางโมเดลเกือบ 1 token ต่อ 1 อักขระ) ค่าที่ได้จึงต่ำกว่าจริง
- * สำหรับไฟล์ที่มีข้อความไทยเยอะ — ยอมรับได้ใน Phase 1 เพราะใช้เตือน ไม่ใช่ใช้เรียกเงิน
+ * Known limitation: the divisor is tuned for English. Thai text costs far more
+ * tokens per character (close to one token per character on some models), so
+ * estimates run low for Thai-heavy files. That is acceptable for now because
+ * the number drives a warning, not billing.
  */
 const CHARS_PER_TOKEN = 4;
 

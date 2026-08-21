@@ -22,7 +22,7 @@ export default tseslint.config(
     },
   },
   {
-    // SECURITY.md กฎที่ 1 — มีแค่ secret-guard.ts ที่สร้าง GuardedFile ได้
+    // Only secret-guard.ts may mint a GuardedFile.
     files: ['src/**/*.ts', 'test/**/*.ts'],
     ignores: ['src/core/secret-guard.ts'],
     rules: {
@@ -33,12 +33,12 @@ export default tseslint.config(
             {
               name: './types.js',
               importNames: ['markGuarded'],
-              message: 'markGuarded() เรียกได้เฉพาะใน core/secret-guard.ts — ดู SECURITY.md กฎที่ 1',
+              message: 'markGuarded() may only be called from core/secret-guard.ts',
             },
             {
               name: '../core/types.js',
               importNames: ['markGuarded'],
-              message: 'markGuarded() เรียกได้เฉพาะใน core/secret-guard.ts — ดู SECURITY.md กฎที่ 1',
+              message: 'markGuarded() may only be called from core/secret-guard.ts',
             },
           ],
         },

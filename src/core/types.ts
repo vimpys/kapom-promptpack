@@ -28,11 +28,12 @@ export interface Redaction {
 }
 
 /**
- * ไฟล์ที่ผ่าน secret guard มาแล้วเท่านั้น
+ * A file that has already cleared the secret guard.
  *
- * brand เป็น unique symbol ที่ไม่ export ออกไป โมดูลอื่นจึงสร้าง object literal
- * ที่เป็น GuardedFile เองไม่ได้ ต้องผ่าน markGuarded() เท่านั้น —
- * เป็นการบังคับ SECURITY.md กฎที่ 1 ด้วย type system ไม่ใช่ด้วยวินัย
+ * The brand is a unique symbol that is never exported, so no other module can
+ * build an object literal satisfying GuardedFile. The only way in is
+ * markGuarded(), which makes "the guard is the last stage and cannot be
+ * bypassed" a compiler rule rather than a matter of discipline.
  */
 declare const guardedBrand: unique symbol;
 
@@ -43,7 +44,7 @@ export interface GuardedFile {
   readonly redactions: readonly Redaction[];
 }
 
-/** เรียกได้จาก core/secret-guard.ts เท่านั้น — ESLint บังคับไว้ */
+/** Callable from core/secret-guard.ts only; enforced by ESLint. */
 export function markGuarded(file: Omit<GuardedFile, typeof guardedBrand>): GuardedFile {
   return file as GuardedFile;
 }
