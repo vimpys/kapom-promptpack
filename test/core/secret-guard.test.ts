@@ -268,3 +268,113 @@ suite('secret-guard / batch behaviour', () => {
     assert.deepEqual(outcome.skipped, []);
   });
 });
+
+suite('secret-guard / keys inside longer names', () => {
+  const compoundKeys: readonly string[] = [
+    'api_key',
+    'my_api_key',
+    'aws_secret_access_key',
+    'db_password',
+    'DJANGO_SECRET_KEY',
+    'JWT_SECRET',
+    'STRIPE_SECRET_KEY',
+    'X-Api-Token',
+    'client_secret',
+    'refresh_token',
+  ];
+
+  for (const key of compoundKeys) {
+    test(`${key} is caught`, () => {
+      const guarded = guardOne(file('compose.yml', `${key} = abcdef123456\n`)).guarded[0];
+
+      assert.ok(guarded);
+      assert.ok(!guarded.content.includes('abcdef123456'), `${key} leaked`);
+    });
+  }
+
+  test('camelCase keys are caught too', () => {
+    const guarded = guardOne(file('a.ts', 'const dbPassword = "abcdef123456";\n')).guarded[0];
+
+    assert.ok(guarded);
+    assert.ok(!guarded.content.includes('abcdef123456'));
+  });
+
+  test('an exact key still redacts a bare number', () => {
+    const guarded = guardOne(file('a.yml', 'password: 12345678\n')).guarded[0];
+
+    assert.ok(guarded);
+    assert.ok(!guarded.content.includes('12345678'));
+  });
+});
+
+suite('secret-guard / auth headers and URLs', () => {
+  test('an opaque bearer token is redacted', () => {
+    const guarded = guardOne(file('a.http', 'Authorization: Bearer a1b2c3d4e5f6g7h8\n')).guarded[0];
+
+    assert.ok(guarded);
+    assert.ok(!guarded.content.includes('a1b2c3d4e5f6g7h8'));
+    assert.ok(guarded.content.includes('Authorization'));
+  });
+
+  test('a basic auth header is redacted', () => {
+    const guarded = guardOne(file('a.http', 'Authorization: Basic dXNlcjpwYXNz\n')).guarded[0];
+
+    assert.ok(guarded);
+    assert.ok(!guarded.content.includes('dXNlcjpwYXNz'));
+  });
+
+  test('basic auth inside an http URL loses only the password', () => {
+    const guarded = guardOne(
+      file('a.ts', 'const api = "https://svc:P4ssw0rd@internal.corp.co.th/v1";\n'),
+    ).guarded[0];
+
+    assert.ok(guarded);
+    assert.ok(!guarded.content.includes('P4ssw0rd'));
+    assert.ok(guarded.content.includes('https://svc:'));
+    assert.ok(guarded.content.includes('@internal.corp.co.th/v1'));
+  });
+
+  test('a plain URL with no credentials is left alone', () => {
+    const line = 'const url = "https://example.com/a/b?c=1";\n';
+    const guarded = guardOne(file('a.ts', line)).guarded[0];
+
+    assert.ok(guarded);
+    assert.equal(guarded.content, line);
+  });
+
+  test('an azure storage account key is redacted', () => {
+    const guarded = guardOne(
+      file('a.config', 'DefaultEndpointsProtocol=https;AccountKey=abcd1234efgh5678ijkl==;\n'),
+    ).guarded[0];
+
+    assert.ok(guarded);
+    assert.ok(!guarded.content.includes('abcd1234efgh5678ijkl=='));
+    assert.ok(guarded.content.includes('DefaultEndpointsProtocol=https'));
+  });
+});
+
+suite('secret-guard / compound keys that are not secrets', () => {
+  const keptLines: readonly string[] = [
+    'const tokens_used = 12345678;',
+    'token_count = 4096',
+    'max_tokens = 100000',
+    'const accessKeyId = row.id;',
+    'secret_santa_year = 2026',
+    'api_key_rotation_days = 90',
+    'const tokenizer = new Tokenizer();',
+    'const passwordStrength = score(input);',
+    'authorization_code_lifetime = 600',
+    'const privateKeyPath = "./keys/id.pem";',
+    'interface Credentials { token: string; }',
+    'type Auth = { accessToken: string; refreshToken: string };',
+  ];
+
+  for (const line of keptLines) {
+    test(`kept: ${line}`, () => {
+      const guarded = guardOne(file('a.ts', `${line}\n`)).guarded[0];
+
+      assert.ok(guarded);
+      assert.equal(guarded.content, `${line}\n`);
+    });
+  }
+});

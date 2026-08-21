@@ -39,7 +39,31 @@ interface ContentRule extends NamedPattern {
   readonly isSecret?: (value: string) => boolean;
 }
 
-const NON_SECRET_LITERALS = new Set(['null', 'true', 'false', 'undefined', 'none', 'nil']);
+const NON_SECRET_LITERALS = new Set([
+  'null',
+  'true',
+  'false',
+  'undefined',
+  'none',
+  'nil',
+  // Type annotations. `token: string` in an interface is a declaration, not a
+  // credential, and mangling those would wreck most TypeScript files.
+  'string',
+  'number',
+  'boolean',
+  'object',
+  'symbol',
+  'bigint',
+  'unknown',
+  'never',
+  'void',
+  'date',
+  'buffer',
+  'promise',
+  'array',
+  'record',
+  'readonly',
+]);
 
 /**
  * An unquoted value counts as a secret only when it looks like an opaque
@@ -59,7 +83,82 @@ function looksLikeBareSecret(value: string): boolean {
   return !/[.()[\]${}<>]/u.test(value);
 }
 
-const SECRET_KEYS = 'password|passwd|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|credential';
+/**
+ * Used where the secret word sits in the middle of a longer name
+ * (`DJANGO_SECRET_KEY`, but also `tokens_used`). A bare number there is far
+ * more likely a count, port or timestamp than a credential, so it is left
+ * alone. A quoted number is still treated as a secret.
+ */
+function looksLikeBareSecretInCompoundKey(value: string): boolean {
+  return looksLikeBareSecret(value) && !/^\d+$/u.test(value);
+}
+
+/**
+ * `\b` is the wrong boundary here. An underscore is a word character, so
+ * `\bpassword` never matches inside `db_password`, and the snake_case shapes
+ * that carry most real secrets (`DJANGO_SECRET_KEY`, `JWT_SECRET`,
+ * `aws_secret_access_key`) slipped straight through. Anything that is not
+ * alphanumeric counts as a separator instead.
+ */
+const KEY_BOUNDARY = '(?<![A-Za-z0-9])';
+
+/**
+ * The key is exactly a secret word, with nothing joined to either side:
+ * `password = ...`, `"token": ...`. A bare number here is taken at face value,
+ * because `password = 123456` really is a password.
+ */
+const EXACT_KEY_PREFIX = '(?<![A-Za-z0-9_-])';
+const EXACT_KEY_SUFFIX = '(?![A-Za-z0-9_-])';
+
+/**
+ * The secret word is part of a longer name, on either side: `max_tokens`,
+ * `token_count`, `DJANGO_SECRET_KEY`. Numbers get the benefit of the doubt
+ * here (see looksLikeBareSecretInCompoundKey).
+ */
+const COMPOUND_SEGMENTS = '(?:[_-][A-Za-z0-9]+)*';
+
+const SECRET_KEYS = [
+  'password',
+  'passwd',
+  'pwd',
+  'secret',
+  'token',
+  'api[_-]?key',
+  'apikey',
+  'access[_-]?key',
+  'account[_-]?key',
+  'shared[_-]?access[_-]?key',
+  'client[_-]?secret',
+  'auth[_-]?token',
+  'refresh[_-]?token',
+  'private[_-]?key',
+  'encryption[_-]?key',
+  'signing[_-]?key',
+  'authorization',
+  'credential',
+].join('|');
+
+/**
+ * camelCase needs its own pass: `dbPassword` has no non-alphanumeric separator
+ * for KEY_BOUNDARY to find. Matching is case sensitive here on purpose, so the
+ * capitalised form is what marks the start of the key.
+ */
+const CAMEL_SECRET_KEYS = [
+  'Password',
+  'Passwd',
+  'Pwd',
+  'Secret',
+  'Token',
+  'ApiKey',
+  'AccessKey',
+  'AccountKey',
+  'PrivateKey',
+  'Credential',
+  'Authorization',
+].join('|');
+
+const EXACT_KEY = `${EXACT_KEY_PREFIX}(?:${SECRET_KEYS})s?${EXACT_KEY_SUFFIX}`;
+const COMPOUND_KEY = `${KEY_BOUNDARY}(?:${SECRET_KEYS})s?${COMPOUND_SEGMENTS}`;
 
 const CONTENT_RULES: readonly ContentRule[] = [
   { rule: 'aws-access-key', pattern: /\b(AKIA[0-9A-Z]{16})\b/gu },
@@ -78,19 +177,54 @@ const CONTENT_RULES: readonly ContentRule[] = [
   },
   {
     rule: 'connection-string-password',
-    pattern: /\b(?:password|pwd)\s*=\s*([^;"'\s]+)/giu,
+    pattern: new RegExp(`${KEY_BOUNDARY}(?:password|pwd)\\s*=\\s*([^;"'\\s]+)`, 'giu'),
     isSecret: looksLikeBareSecret,
+  },
+  // Basic auth credentials embedded in an http(s) URL. The database schemes are
+  // already covered above, but an internal service URL is just as sensitive.
+  {
+    rule: 'url-basic-auth',
+    pattern: /(?<=https?:\/\/[^\s:@"'<>]{1,128}:)([^\s@"'<>]+)(?=@)/giu,
+  },
+  {
+    rule: 'bearer-token',
+    pattern: /(?<![A-Za-z0-9])Bearer\s+([A-Za-z0-9._~+/=-]{8,})/giu,
+  },
+  {
+    rule: 'basic-auth-header',
+    pattern: /(?<![A-Za-z0-9])Basic\s+([A-Za-z0-9+/=]{8,})/giu,
   },
   // The optional quote after the key matters: `"password": "x"` in JSON is the
   // single most common shape this guard has to catch.
   {
     rule: 'assigned-secret',
-    pattern: new RegExp(`\\b(?:${SECRET_KEYS})s?["']?\\s*[:=]\\s*["']([^"']+)["']`, 'giu'),
+    pattern: new RegExp(`${EXACT_KEY}["']?\\s*[:=]\\s*["']([^"']+)["']`, 'giu'),
   },
   {
     rule: 'assigned-secret',
-    pattern: new RegExp(`\\b(?:${SECRET_KEYS})s?["']?\\s*[:=]\\s*([^\\s,;)"']+)`, 'giu'),
+    pattern: new RegExp(`${EXACT_KEY}["']?\\s*[:=]\\s*([^\\s,;)"']+)`, 'giu'),
     isSecret: looksLikeBareSecret,
+  },
+  // The secret word can sit anywhere inside a longer name: `DJANGO_SECRET_KEY`,
+  // `aws_secret_access_key`, `max_tokens`. Without consuming the surrounding
+  // segments the `[:=]` never lines up and the whole line is missed.
+  {
+    rule: 'assigned-secret',
+    pattern: new RegExp(`${COMPOUND_KEY}["']?\\s*[:=]\\s*["']([^"']+)["']`, 'giu'),
+  },
+  {
+    rule: 'assigned-secret',
+    pattern: new RegExp(`${COMPOUND_KEY}["']?\\s*[:=]\\s*([^\\s,;)"']+)`, 'giu'),
+    isSecret: looksLikeBareSecretInCompoundKey,
+  },
+  {
+    rule: 'assigned-secret',
+    pattern: new RegExp(`(?<=[a-z])(?:${CAMEL_SECRET_KEYS})s?["']?\\s*[:=]\\s*["']([^"']+)["']`, 'gu'),
+  },
+  {
+    rule: 'assigned-secret',
+    pattern: new RegExp(`(?<=[a-z])(?:${CAMEL_SECRET_KEYS})s?["']?\\s*[:=]\\s*([^\\s,;)"']+)`, 'gu'),
+    isSecret: looksLikeBareSecretInCompoundKey,
   },
 ];
 
