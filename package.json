@@ -36,31 +36,73 @@
   },
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "kapomPromptPack",
+          "title": "Kapom PromptPack",
+          "icon": "media/chameleon.svg"
+        }
+      ]
+    },
+    "views": {
+      "kapomPromptPack": [
+        {
+          "id": "kapomPromptPack.panel",
+          "name": "Prompt",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
+      {
+        "command": "kapomPromptPack.addToPanel",
+        "title": "Add to Prompt Panel",
+        "category": "Kapom PromptPack"
+      },
       {
         "command": "kapomPromptPack.packFiles",
         "title": "Pack Selected Files",
         "category": "Kapom PromptPack"
       },
       {
-        "command": "kapomPromptPack.hello",
-        "title": "Hello",
-        "category": "Kapom PromptPack"
+        "command": "kapomPromptPack.copyPrompt",
+        "title": "Copy Prompt",
+        "category": "Kapom PromptPack",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "kapomPromptPack.clearContext",
+        "title": "Clear Context",
+        "category": "Kapom PromptPack",
+        "icon": "$(clear-all)"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "kapomPromptPack.packFiles",
+          "command": "kapomPromptPack.addToPanel",
           "when": "workspaceFolderCount != 0",
           "group": "6_copypath@10"
         }
       ],
       "editor/context": [
         {
-          "command": "kapomPromptPack.packFiles",
+          "command": "kapomPromptPack.addToPanel",
           "when": "workspaceFolderCount != 0",
           "group": "9_cutcopypaste@10"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "kapomPromptPack.copyPrompt",
+          "when": "view == kapomPromptPack.panel",
+          "group": "navigation@1"
+        },
+        {
+          "command": "kapomPromptPack.clearContext",
+          "when": "view == kapomPromptPack.panel",
+          "group": "navigation@2"
         }
       ]
     },

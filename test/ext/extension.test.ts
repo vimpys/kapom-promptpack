@@ -14,9 +14,41 @@ suite('kapom-promptpack', () => {
     assert.equal(extension.isActive, true);
   });
 
-  test('hello command is registered', async () => {
+  test('every contributed command is registered', async () => {
     const commands = await vscode.commands.getCommands(true);
 
-    assert.ok(commands.includes('kapomPromptPack.hello'));
+    for (const id of [
+      'kapomPromptPack.packFiles',
+      'kapomPromptPack.addToPanel',
+      'kapomPromptPack.copyPrompt',
+      'kapomPromptPack.clearContext',
+    ]) {
+      assert.ok(commands.includes(id), `${id} is not registered`);
+    }
+  });
+
+  test('the panel view is contributed to its own activity bar container', () => {
+    const extension = vscode.extensions.getExtension(EXTENSION_ID);
+
+    assert.ok(extension);
+
+    const contributes = extension.packageJSON as {
+      contributes: {
+        viewsContainers: { activitybar: readonly { id: string; icon: string }[] };
+        views: Record<string, readonly { id: string; type?: string }[]>;
+      };
+    };
+
+    const container = contributes.contributes.viewsContainers.activitybar[0];
+
+    assert.ok(container);
+    assert.equal(container.id, 'kapomPromptPack');
+    assert.match(container.icon, /\.svg$/u);
+
+    const view = contributes.contributes.views['kapomPromptPack']?.[0];
+
+    assert.ok(view);
+    assert.equal(view.id, 'kapomPromptPack.panel');
+    assert.equal(view.type, 'webview');
   });
 });

@@ -49,6 +49,7 @@ interface PackContext {
 async function buildPayload(
   entries: readonly WorkspaceFileEntry[],
   context: PackContext,
+  task: string,
 ): Promise<PackResult> {
   const { settings, folder } = context;
   const sources: SourceFile[] = [];
@@ -95,6 +96,7 @@ async function buildPayload(
     skipped: [...skipped, ...collected.skipped, ...guarded.skipped],
     language: settings.outputLanguage,
     includeOverview: settings.includeProjectOverview,
+    ...(task.trim().length === 0 ? {} : { task }),
   });
 }
 
@@ -145,9 +147,25 @@ export async function packFiles(
   uris?: readonly vscode.Uri[],
   dependencies: PackDependencies = {},
 ): Promise<void> {
+  return runPack(resolveSelection(uri, uris), '', dependencies);
+}
+
+/** Used by the panel, which carries its own file list and task text. */
+export async function packContext(
+  selection: readonly vscode.Uri[],
+  task: string,
+  dependencies: PackDependencies = {},
+): Promise<void> {
+  return runPack(selection, task, dependencies);
+}
+
+async function runPack(
+  selection: readonly vscode.Uri[],
+  task: string,
+  dependencies: PackDependencies,
+): Promise<void> {
   const provider = dependencies.provider ?? new ClipboardProvider();
   const confirm = dependencies.confirm ?? confirmPayload;
-  const selection = resolveSelection(uri, uris);
 
   if (selection.length === 0) {
     void vscode.window.showWarningMessage(
@@ -192,7 +210,7 @@ export async function packFiles(
           shouldReadFile: (path) => pathSkipReason(path, rules) === undefined,
         });
 
-        return buildPayload(entries, { folder, settings, gitignore });
+        return buildPayload(entries, { folder, settings, gitignore }, task);
       },
     );
 
